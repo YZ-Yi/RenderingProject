@@ -16,6 +16,8 @@
 #include "Model.h"
 
 #include <iostream>
+#include <vector>
+#include <list>
 
 #include "imGui/imgui.h"
 #include "imGui_impl_glfw.h"
@@ -25,6 +27,8 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
+
+
 
 // window settings
 const unsigned int SCR_WIDTH = 800;
@@ -43,7 +47,14 @@ float lastFrame = 0.0f;
 // Object rotation settings
 glm::mat4 rotation;
 float rotSpeed = 2.5f;
-bool cameraFlag = true;
+bool outlineFlag = true;
+
+//adjacent list
+struct Node {
+    unsigned int v;                     //vertex id(index)
+    unsigned int f = 0;                  //front face bit
+    unsigned int b = 0;                  //back face bit
+};
 
 int main()
 {
@@ -74,6 +85,7 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
+
     // tell GLFW to capture our mouse
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
@@ -94,16 +106,118 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader ourShader("../shaders/Phong.vs", "../shaders/Phong.fs");
+    Shader ourShader("../shaders/CookTorrance.vs.glsl", "../shaders/CookTorrance.fs.glsl");
+    Shader ourShader2("../shaders/outline.vs.glsl", "../shaders/outline.fs.glsl");
+
 
     // load model(s), default model is vase.obj, can load multiple at a time
     // -----------
-    Model ourModel("../models/vase/vase.obj");
+    Model ourModel("../models/teapot.obj");
+    //Model ourModel("../models/pyramid.obj");
+
+    //edge buffer stuff
+    //-------------------------------------------------------------------------------
+    std::vector<std::list<Node>> edgeBuffer;
+    std::vector<glm::vec3> vertices;
+
+    for (unsigned int j = 0; j < ourModel.meshes[0].indices.size(); j++) {
+        list<Node> l;
+        edgeBuffer.push_back(l);
+    }
+
+    for (unsigned int j = 0; j < ourModel.meshes[0].indices.size() / 3; j++)
+    {
+        size_t numTriangles = ourModel.meshes[0].indices.size() / 3;
+        size_t numIndices = ourModel.meshes[0].indices.size();
+        size_t numVertices = ourModel.meshes[0].vertices.size();
+
+        unsigned int i0, i1, i2;
+        Vertex v0, v1, v2;
+        //Get indices of this triangle
+        i0 = ourModel.meshes[0].indices[j * 3 + 0];
+        i1 = ourModel.meshes[0].indices[j * 3 + 1];
+        i2 = ourModel.meshes[0].indices[j * 3 + 2];
+
+
+        //sort indices
+        if (i0 > i1) {
+            unsigned int temp = i0;
+            i0 = i1;
+            i1 = temp;
+        }
+        if (i0 > i2) {
+            unsigned int temp = i0;
+            i0 = i2;
+            i2 = temp;
+        }
+        if (i1 > i2) {
+            unsigned int temp = i1;
+            i1 = i2;
+            i2 = temp;
+        }
+        //cout << i0 << " " << i1 << " " << i2 << endl;
+
+
+        v0 = ourModel.meshes[0].vertices[i0];
+        v1 = ourModel.meshes[0].vertices[i1];
+        v2 = ourModel.meshes[0].vertices[i2];
+
+
+
+        //construct edge buffer
+        int isVIn = false;
+        for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+            if ((*it).v == i1) {
+                isVIn = true;
+                break;
+            }
+        }
+        if (isVIn == false) {
+            Node n;
+            n.v = i1;
+            edgeBuffer[i0].push_back(n);
+        }
+
+        isVIn = false;
+        for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+            if ((*it).v == i2) {
+                isVIn = true;
+                break;
+            }
+        }
+        if (isVIn == false) {
+            Node n;
+            n.v = i2;
+            edgeBuffer[i0].push_back(n);
+        }
+
+        isVIn = false;
+        for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
+            if ((*it).v == i2) {
+                isVIn = true;
+                break;
+            }
+        }
+        if (isVIn == false) {
+            Node n;
+            n.v = i2;
+            edgeBuffer[i1].push_back(n);
+
+        }
+
+    }
+
+
+  
+    //edge buffer stuff ends here
+    //-------------------------------------------------------------------------------
 
     //enable this to draw in wireframe
     // -----------
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    //imGui stuff
+    //---------------------------------------------------------------------------------
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -120,6 +234,19 @@ int main()
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Imgui setting END
+    //----------------------------------------------------------------------------------
+
+    unsigned int VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
 
     // Infinite render loop
@@ -128,27 +255,9 @@ int main()
     {
 
         
-        ImGui_ImplOpenGL3_NewFrame();
-        
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");
-
-            ImGui::End();
-
-        }
-
-       
-        
 
         // per-frame time logic
-        // --------------------
+       // --------------------
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -162,10 +271,12 @@ int main()
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        
+
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
+        // This shader will have filled-in triangles
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         //LIGHTS
         glm::vec3 lightPositions[2] = { glm::vec3(0.f, 0.f, 2.f), glm::vec3(-2.f, -1.f, 2.f) };
@@ -185,15 +296,213 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));	// The default vase is a bit too big for our scene, so scale it down
         float roughness = 0.3; // The roughness of the mesh [0,1]
         glm::vec3 objectColour = glm::vec3(0.722, 0.45, 0.2);
 
         ourShader.setMat4("model", model);
-        ourShader.setFloat("roughness", roughness);
         ourShader.setVec3("objectColour", objectColour);
-        
+
         ourModel.Draw(ourShader);
+
+
+        //outline stuff
+        //------------------------------------------------------------------------------------------------------------------------------
+        if (outlineFlag) {
+            // Set the current active shader to shader #2
+            ourShader2.use();
+            // This shader will not have filled-in triangles
+            //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+            //Send vertex shader data
+            ourShader2.setMat4("projection", projection);
+            ourShader2.setMat4("view", view);
+            ourShader2.setMat4("model", model);
+
+            //reset edge buffer and other
+            vertices.clear();
+            for (int j = 0; j < ourModel.meshes[0].indices.size(); ++j) {
+                for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
+                    (*it).b = 0;
+                    (*it).f = 0;
+                }
+            }
+
+            //For each triangle
+            size_t numTriangles = ourModel.meshes[0].indices.size() / 3;
+            for (int j = 0; j < numTriangles; j++)
+            {
+                unsigned int i0, i1, i2;
+                Vertex v0, v1, v2;
+                //Get indices of this triangle
+                i0 = ourModel.meshes[0].indices[j * 3 + 0];
+                i1 = ourModel.meshes[0].indices[j * 3 + 1];
+                i2 = ourModel.meshes[0].indices[j * 3 + 2];
+
+                //Get vertices of this triangle using indices
+                v0 = ourModel.meshes[0].vertices[i0];
+                v1 = ourModel.meshes[0].vertices[i1];
+                v2 = ourModel.meshes[0].vertices[i2];
+
+                //Get two edges of the triangle to compute triangle normal
+                glm::vec3 a = v1.Position - v0.Position;
+                glm::vec3 b = v2.Position - v1.Position;
+                glm::vec3 triangleNormal = glm::normalize(glm::cross(a, b));
+                //triangleNormal = glm::mat3(rotation) * triangleNormal;
+                triangleNormal = glm::mat3(model) * triangleNormal;
+
+                //sort indices
+                if (i0 > i1) {
+                    unsigned int temp = i0;
+                    i0 = i1;
+                    i1 = temp;
+                }
+                if (i0 > i2) {
+                    unsigned int temp = i0;
+                    i0 = i2;
+                    i2 = temp;
+                }
+                if (i1 > i2) {
+                    unsigned int temp = i1;
+                    i1 = i2;
+                    i2 = temp;
+                }
+
+
+                //Get vertices of this triangle using indices
+                v0 = ourModel.meshes[0].vertices[i0];
+                v1 = ourModel.meshes[0].vertices[i1];
+                v2 = ourModel.meshes[0].vertices[i2];
+
+
+                //Compute centroid of the triangle
+                glm::vec3 triangleCentroid = (v0.Position + v1.Position + v2.Position) / 3.f;
+                // triangleCentroid = glm::mat3(rotation) * triangleCentroid;
+                triangleCentroid = glm::mat3(model) * triangleCentroid;
+
+                glm::vec3 viewDirection = glm::normalize(triangleCentroid - viewPos);
+
+                //using algorithm from lec
+                //If the dotproduct between the centroid and the viewDirection is , this triangle is front facing
+                if (glm::dot(triangleNormal, viewDirection) <= 0.0f)
+                {
+
+                    //If this triangle is front facing, we add its 3 vertices to the vertices array
+                    //Note that for your assignment, you need to reset the vertices array each frame, and compute all of this inside the infinite loop below
+
+
+                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+                        if ((*it).v == i1) {
+                            (*it).f = (*it).f ^ 1;
+                            break;
+                        }
+                    }
+
+                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+                        if ((*it).v == i2) {
+                            (*it).f = (*it).f ^ 1;
+                            break;
+                        }
+                    }
+
+                    for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
+                        if ((*it).v == i2) {
+                            (*it).f = (*it).f ^ 1;
+                            break;
+                        }
+                    }
+
+                }
+                //else, this triangle is back facing
+                else {
+                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+                        if ((*it).v == i1) {
+                            (*it).b = (*it).b ^ 1;
+                            break;
+                        }
+                    }
+
+                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+                        if ((*it).v == i2) {
+                            (*it).b = (*it).b ^ 1;
+                            break;
+                        }
+                    }
+
+                    for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
+                        if ((*it).v == i2) {
+                            (*it).b = (*it).b ^ 1;
+                            break;
+                        }
+
+                    }
+
+                }
+
+
+
+                /*
+                for (int j = 0; j < 10; ++j) {
+                    for (auto& it : edgeBuffer[j])
+                        cout << j << " " << it.v << " " << it.f << " " << it.b << endl;
+                }
+
+                */
+            }
+
+            //if the line is silhouette, add it to the vertices
+            for (int j = 0; j < edgeBuffer.size(); ++j) {
+                Vertex v0, v1;
+                for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
+                    //if front bit and back bit are both 1, which means it is a silhooute
+                    if ((*it).b && (*it).f) {
+                        v0 = ourModel.meshes[0].vertices[j];
+                        v1 = ourModel.meshes[0].vertices[(*it).v];
+                        //cout << j << " "  << (*it).v << " " << (*it).b << " " << (*it).f << endl;
+                        vertices.push_back(v0.Position);
+                        vertices.push_back(v1.Position);
+                    }
+                }
+            }
+            //std::cout << vertices.size() << std::endl;
+            //std::cout << edgeBuffer.size() << std::endl;
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_DYNAMIC_DRAW);
+
+            glBindVertexArray(0);
+
+
+            //draw triangles with line thickness 3.0
+            glBindVertexArray(VAO);
+            //glPointSize(lineWidth);
+            glEnable(GL_LINE_SMOOTH);
+            glLineWidth(3.f);
+            //glDrawArrays(GL_POINTS, 0, vertices.size());
+            glDrawArrays(GL_LINES, 0, vertices.size());
+            glBindVertexArray(0);
+        }
+
+
+        //---------------------------------------------------------------------------------------------------------
+        //end of outline stuff
+
+
+        ImGui_ImplOpenGL3_NewFrame();
+
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        {
+            static float f = 0.0f;
+            static int counter = 0;
+
+            ImGui::Begin("Interface");                          // Create a window called "Hello, world!" and append into it.
+
+            ImGui::Checkbox("Outline", &outlineFlag);
+
+            ImGui::End();
+
+        }
+
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -244,12 +553,6 @@ void processInput(GLFWwindow* window)
         glfwSetWindowShouldClose(window, true);
 
     //Camera controls
-    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
-        cameraFlag = true;
-    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
-        cameraFlag = false;
-        std::cout << cameraFlag << std:: endl;
-    }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)

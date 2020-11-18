@@ -14,13 +14,9 @@ uniform vec3 lightPositions[2];
 uniform vec3 lightIntensities[2];
 
 
-//Globals
-float PI = 3.141592653589793f;
-
-
 void main()
 {   
 	//Your code goes here!
 	//Use functions to be organized! A function for D, G, and F are good starting points!
-    FragColour = vec4(objectColour, 1);
+    FragColour = vec4(objectColour, 1.0);
 }
