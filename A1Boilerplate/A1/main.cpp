@@ -51,6 +51,7 @@ bool outlineFlag = true;
 float creaseAngle = 90.f;
 bool creaseFlag = true;
 bool silhouetteFlag = true;
+bool resetFlag = false;
 
 //adjacent list
 struct Node {
@@ -117,10 +118,10 @@ int main()
     // load model(s), default model is vase.obj, can load multiple at a time
     // -----------
     //Model ourModel("../models/teapot.obj");
-    //Model ourModel("../models/pyramid.obj");
+    Model ourModel("../models/pyramid.obj");
     //Model ourModel("../models/bunny.obj");
     //Model ourModel("../models/engine.obj");
-    Model ourModel("../models/terrain.obj");
+    //Model ourModel("../models/terrain.obj");
 
     //edge buffer stuff
     //-------------------------------------------------------------------------------
@@ -137,6 +138,9 @@ int main()
         size_t numTriangles = ourModel.meshes[0].indices.size() / 3;
         size_t numIndices = ourModel.meshes[0].indices.size();
         size_t numVertices = ourModel.meshes[0].vertices.size();
+
+        std::cout << "Vertices " << numVertices << std::endl;
+        std::cout << "Indices " << numIndices << std::endl;
 
         unsigned int i0, i1, i2;
         Vertex v0, v1, v2;
@@ -292,6 +296,12 @@ int main()
         glUniform3fv(glGetUniformLocation(ourShader.ID, "lightIntensities"), 2, glm::value_ptr(lightIntensities[0]));
 
 
+        if (resetFlag) {
+            camera = Camera(glm::vec3(0.0f, 2.0f, 3.0f));
+            rotation = glm::mat4(1);
+            resetFlag = false;
+        }
+
         //CAMERA
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
@@ -303,7 +313,8 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default vase is a bit too big for our scene, so scale it down
+        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default vase is a bit too big for our scene, so scale it down
         float roughness = 0.3; // The roughness of the mesh [0,1]
         glm::vec3 objectColour = glm::vec3(0.722, 0.45, 0.2);
 
@@ -332,6 +343,7 @@ int main()
                 for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
                     (*it).b = 0;
                     (*it).f = 0;
+                    it->norms.clear();
                 }
             }
 
@@ -393,7 +405,11 @@ int main()
                 for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                     if ((*it).v == i1) {
                         it->norms.push_back(triangleNormal);
+                        break;
                     }
+                }
+                
+                for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                     if ((*it).v == i2) {
                         it->norms.push_back(triangleNormal);
                         break;
@@ -419,8 +435,11 @@ int main()
                     for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                         if ((*it).v == i1) {
                             (*it).f = (*it).f ^ 1;
+                            break;
                         }
-
+                    }
+                    
+                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                         if ((*it).v == i2) {
                             (*it).f = (*it).f ^ 1;
                             break;
@@ -464,14 +483,18 @@ int main()
                 }
 
 
-
                 /*
                 for (int j = 0; j < 10; ++j) {
-                    for (auto& it : edgeBuffer[j])
+                    for (auto& it : edgeBuffer[j]) {
                         cout << j << " " << it.v << " " << it.f << " " << it.b << endl;
+                        std::cout << j << " " << it.v;
+                        for (auto norm : it.norms)
+                            std::cout << "(" << norm.x << ", " << norm.y << ", " << norm.z << ") ";
+                        std::cout << std::endl;
+                    }
                 }
-
                 */
+                
             }
 
             if (silhouetteFlag) {
@@ -507,7 +530,7 @@ int main()
                                 it->norms.pop_back();
                                 glm::vec3 norm2 = it->norms.back();
                                 it->norms.pop_back();
-                                if (glm::dot(norm1, norm2) <= glm::cos(glm::radians(180.f - creaseAngle)) && glm::dot(norm1, norm2) < 1.f && glm::dot(norm1, norm2) > -1.f) {
+                                if (glm::dot(norm1, norm2) <= glm::cos(glm::radians(180.f - creaseAngle))) {
                                     vertices.push_back(v0.Position);
                                     vertices.push_back(v1.Position);
                                 }
@@ -538,20 +561,7 @@ int main()
 
             glDrawArrays(GL_LINES, 0, vertices.size());
             glBindVertexArray(0);
-/*
-            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), creaseVertices.data(), GL_DYNAMIC_DRAW);
-            glBindVertexArray(0);
 
-
-            //draw triangles with line thickness 3.0
-            glBindVertexArray(VAO);
-            //glPointSize(lineWidth);
-            glEnable(GL_LINE_SMOOTH);
-            glLineWidth(3.f);
-            //glDrawArrays(GL_POINTS, 0, vertices.size());
-            glDrawArrays(GL_LINES, 0, creaseVertices.size());
-            glBindVertexArray(0);
-      */  
         }
 
 
@@ -570,6 +580,9 @@ int main()
         {
 
             ImGui::Begin("Interface");                          // Create a window called "Hello, world!" and append into it.
+
+            if (ImGui::Button("Reset"))
+                resetFlag = true;
 
             ImGui::Checkbox("Outline", &outlineFlag);
             ImGui::Checkbox("Silhouette", &silhouetteFlag);
