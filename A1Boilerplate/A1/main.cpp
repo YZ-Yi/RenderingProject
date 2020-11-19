@@ -48,12 +48,16 @@ float lastFrame = 0.0f;
 glm::mat4 rotation;
 float rotSpeed = 2.5f;
 bool outlineFlag = true;
+float creaseAngle = 90.f;
+bool creaseFlag = true;
+bool silhouetteFlag = true;
 
 //adjacent list
 struct Node {
     unsigned int v;                     //vertex id(index)
-    unsigned int f = 0;                  //front face bit
-    unsigned int b = 0;                  //back face bit
+    unsigned int f = 0;                 //front face bit
+    unsigned int b = 0;                 //back face bit
+    std::vector<glm::vec3> norms;       //normals of 2 faces
 };
 
 int main()
@@ -112,8 +116,11 @@ int main()
 
     // load model(s), default model is vase.obj, can load multiple at a time
     // -----------
-    Model ourModel("../models/teapot.obj");
+    //Model ourModel("../models/teapot.obj");
     //Model ourModel("../models/pyramid.obj");
+    //Model ourModel("../models/bunny.obj");
+    //Model ourModel("../models/engine.obj");
+    Model ourModel("../models/terrain.obj");
 
     //edge buffer stuff
     //-------------------------------------------------------------------------------
@@ -296,7 +303,7 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));	// The default vase is a bit too big for our scene, so scale it down
+        model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default vase is a bit too big for our scene, so scale it down
         float roughness = 0.3; // The roughness of the mesh [0,1]
         glm::vec3 objectColour = glm::vec3(0.722, 0.45, 0.2);
 
@@ -328,7 +335,7 @@ int main()
                 }
             }
 
-            //For each triangle
+            //For each triangle, calculate edge buffer
             size_t numTriangles = ourModel.meshes[0].indices.size() / 3;
             for (int j = 0; j < numTriangles; j++)
             {
@@ -381,6 +388,24 @@ int main()
                 triangleCentroid = glm::mat3(model) * triangleCentroid;
 
                 glm::vec3 viewDirection = glm::normalize(triangleCentroid - viewPos);
+                
+                //normals for calculating creases
+                for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+                    if ((*it).v == i1) {
+                        it->norms.push_back(triangleNormal);
+                    }
+                    if ((*it).v == i2) {
+                        it->norms.push_back(triangleNormal);
+                        break;
+                    }
+                }
+
+                for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
+                    if ((*it).v == i2) {
+                        it->norms.push_back(triangleNormal);
+                        break;
+                    }
+                }
 
                 //using algorithm from lec
                 //If the dotproduct between the centroid and the viewDirection is , this triangle is front facing
@@ -394,16 +419,15 @@ int main()
                     for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                         if ((*it).v == i1) {
                             (*it).f = (*it).f ^ 1;
-                            break;
                         }
-                    }
 
-                    for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                         if ((*it).v == i2) {
                             (*it).f = (*it).f ^ 1;
                             break;
                         }
                     }
+
+                   
 
                     for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
                         if ((*it).v == i2) {
@@ -450,22 +474,56 @@ int main()
                 */
             }
 
-            //if the line is silhouette, add it to the vertices
-            for (int j = 0; j < edgeBuffer.size(); ++j) {
-                Vertex v0, v1;
-                for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
-                    //if front bit and back bit are both 1, which means it is a silhooute
-                    if ((*it).b && (*it).f) {
-                        v0 = ourModel.meshes[0].vertices[j];
-                        v1 = ourModel.meshes[0].vertices[(*it).v];
-                        //cout << j << " "  << (*it).v << " " << (*it).b << " " << (*it).f << endl;
-                        vertices.push_back(v0.Position);
-                        vertices.push_back(v1.Position);
+            if (silhouetteFlag) {
+                //if the line is silhouette, add it to the vertices
+                for (int j = 0; j < edgeBuffer.size(); ++j) {
+                    Vertex v0, v1;
+                    for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
+                        //if front bit and back bit are both 1, which means it is a silhooute
+                        if ((*it).b && (*it).f) {
+                            v0 = ourModel.meshes[0].vertices[j];
+                            v1 = ourModel.meshes[0].vertices[(*it).v];
+                            //cout << j << " "  << (*it).v << " " << (*it).b << " " << (*it).f << endl;
+                            vertices.push_back(v0.Position);
+                            vertices.push_back(v1.Position);
+                        }
                     }
                 }
+
+               
             }
+           
+            if (creaseFlag) {
+                //if the line is crease, add it to the creaseVertices
+                for (int j = 0; j < edgeBuffer.size(); ++j) {
+                    Vertex v0, v1;
+                    for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
+                        //if it's front face
+                        if (!(*it).f && !(*it).b) {
+                            v0 = ourModel.meshes[0].vertices[j];
+                            v1 = ourModel.meshes[0].vertices[(*it).v];
+                            if (it->norms.size() >= 2) {
+                                glm::vec3 norm1 = it->norms.back();
+                                it->norms.pop_back();
+                                glm::vec3 norm2 = it->norms.back();
+                                it->norms.pop_back();
+                                if (glm::dot(norm1, norm2) <= glm::cos(glm::radians(180.f - creaseAngle)) && glm::dot(norm1, norm2) < 1.f && glm::dot(norm1, norm2) > -1.f) {
+                                    vertices.push_back(v0.Position);
+                                    vertices.push_back(v1.Position);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                
+            }
+           
+
+            //std::cout << creaseVertices.size() << std::endl;
             //std::cout << vertices.size() << std::endl;
             //std::cout << edgeBuffer.size() << std::endl;
+
             glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_DYNAMIC_DRAW);
 
             glBindVertexArray(0);
@@ -477,26 +535,47 @@ int main()
             glEnable(GL_LINE_SMOOTH);
             glLineWidth(3.f);
             //glDrawArrays(GL_POINTS, 0, vertices.size());
+
             glDrawArrays(GL_LINES, 0, vertices.size());
             glBindVertexArray(0);
+/*
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), creaseVertices.data(), GL_DYNAMIC_DRAW);
+            glBindVertexArray(0);
+
+
+            //draw triangles with line thickness 3.0
+            glBindVertexArray(VAO);
+            //glPointSize(lineWidth);
+            glEnable(GL_LINE_SMOOTH);
+            glLineWidth(3.f);
+            //glDrawArrays(GL_POINTS, 0, vertices.size());
+            glDrawArrays(GL_LINES, 0, creaseVertices.size());
+            glBindVertexArray(0);
+      */  
         }
 
 
         //---------------------------------------------------------------------------------------------------------
         //end of outline stuff
 
+        if (!outlineFlag) {
+            silhouetteFlag = false;
+            creaseFlag = false;
+        }
 
         ImGui_ImplOpenGL3_NewFrame();
 
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         {
-            static float f = 0.0f;
-            static int counter = 0;
 
             ImGui::Begin("Interface");                          // Create a window called "Hello, world!" and append into it.
 
             ImGui::Checkbox("Outline", &outlineFlag);
+            ImGui::Checkbox("Silhouette", &silhouetteFlag);
+            ImGui::Checkbox("Crease", &creaseFlag);
+
+            ImGui::SliderFloat("float", &creaseAngle, 0.0f, 180.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 
             ImGui::End();
 
