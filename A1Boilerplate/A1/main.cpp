@@ -118,9 +118,9 @@ int main()
     // load model(s), default model is vase.obj, can load multiple at a time
     // -----------
     //Model ourModel("../models/teapot.obj");
-    Model ourModel("../models/pyramid.obj");
+    //Model ourModel("../models/pyramid.obj");
     //Model ourModel("../models/bunny.obj");
-    //Model ourModel("../models/engine.obj");
+    Model ourModel("../models/engine.obj");
     //Model ourModel("../models/terrain.obj");
 
     //edge buffer stuff
@@ -139,8 +139,8 @@ int main()
         size_t numIndices = ourModel.meshes[0].indices.size();
         size_t numVertices = ourModel.meshes[0].vertices.size();
 
-        std::cout << "Vertices " << numVertices << std::endl;
-        std::cout << "Indices " << numIndices << std::endl;
+        //std::cout << "Vertices " << numVertices << std::endl;
+       // std::cout << "Indices " << numIndices << std::endl;
 
         unsigned int i0, i1, i2;
         Vertex v0, v1, v2;
@@ -313,8 +313,8 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
-        //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default vase is a bit too big for our scene, so scale it down
+        //model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default terrian is a bit too big for our scene, so scale it down
         float roughness = 0.3; // The roughness of the mesh [0,1]
         glm::vec3 objectColour = glm::vec3(0.722, 0.45, 0.2);
 
@@ -368,7 +368,7 @@ int main()
                 glm::vec3 b = v2.Position - v1.Position;
                 glm::vec3 triangleNormal = glm::normalize(glm::cross(a, b));
                 //triangleNormal = glm::mat3(rotation) * triangleNormal;
-                triangleNormal = glm::mat3(model) * triangleNormal;
+                triangleNormal = glm::normalize(glm::mat3(model) * triangleNormal);
 
                 //sort indices
                 if (i0 > i1) {
@@ -401,6 +401,10 @@ int main()
 
                 glm::vec3 viewDirection = glm::normalize(triangleCentroid - viewPos);
                 
+                //std::cout << i0 << " " << i1 << " " << i2 << " ";
+                //std::cout << "(" << triangleNormal.x << ", " << triangleNormal.y << ", " << triangleNormal.z << ") " << std::endl;
+
+
                 //normals for calculating creases
                 for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                     if ((*it).v == i1) {
@@ -409,6 +413,8 @@ int main()
                     }
                 }
                 
+
+              
                 for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
                     if ((*it).v == i2) {
                         it->norms.push_back(triangleNormal);
@@ -483,19 +489,22 @@ int main()
                 }
 
 
-                /*
-                for (int j = 0; j < 10; ++j) {
-                    for (auto& it : edgeBuffer[j]) {
-                        cout << j << " " << it.v << " " << it.f << " " << it.b << endl;
-                        std::cout << j << " " << it.v;
-                        for (auto norm : it.norms)
-                            std::cout << "(" << norm.x << ", " << norm.y << ", " << norm.z << ") ";
-                        std::cout << std::endl;
-                    }
-                }
-                */
                 
             }
+
+            //debug
+            /*
+            std::cout << "EDGEBUFFER" << std::endl;
+            for (int j = 0; j < 10; ++j) {
+                for (auto& it : edgeBuffer[j]) {
+                    cout << j << " " << it.v << " " << it.f << " " << it.b << endl;
+                    std::cout << j << " " << it.v;
+                    for (auto norm : it.norms)
+                        std::cout << "(" << norm.x << ", " << norm.y << ", " << norm.z << ") ";
+                    std::cout << std::endl;
+                }
+            }
+            */
 
             if (silhouetteFlag) {
                 //if the line is silhouette, add it to the vertices
@@ -588,7 +597,7 @@ int main()
             ImGui::Checkbox("Silhouette", &silhouetteFlag);
             ImGui::Checkbox("Crease", &creaseFlag);
 
-            ImGui::SliderFloat("float", &creaseAngle, 0.0f, 180.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::SliderFloat("float", &creaseAngle, 0.0f, 150.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 
             ImGui::End();
 
@@ -598,7 +607,14 @@ int main()
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-
+        //uncomment this to pause per frame
+        /*
+        int m;
+        std::cin >> m;
+        while (m != 1) {
+            std:: cin >> m;
+        }
+        */
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
