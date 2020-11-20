@@ -149,7 +149,7 @@ int main()
         i1 = ourModel.meshes[0].indices[j * 3 + 1];
         i2 = ourModel.meshes[0].indices[j * 3 + 2];
 
-
+        
         //sort indices
         if (i0 > i1) {
             unsigned int temp = i0;
@@ -172,8 +172,6 @@ int main()
         v0 = ourModel.meshes[0].vertices[i0];
         v1 = ourModel.meshes[0].vertices[i1];
         v2 = ourModel.meshes[0].vertices[i2];
-
-
 
         //construct edge buffer
         int isVIn = false;
@@ -216,6 +214,68 @@ int main()
 
         }
 
+    }
+
+    for (unsigned int j = 0; j < ourModel.meshes[0].indices.size() / 3; j++) {
+        unsigned int i0, i1, i2;
+        Vertex v0, v1, v2;
+        //Get indices of this triangle
+        i0 = ourModel.meshes[0].indices[j * 3 + 0];
+        i1 = ourModel.meshes[0].indices[j * 3 + 1];
+        i2 = ourModel.meshes[0].indices[j * 3 + 2];
+        //Get vertices of this triangle using indices
+        v0 = ourModel.meshes[0].vertices[i0];
+        v1 = ourModel.meshes[0].vertices[i1];
+        v2 = ourModel.meshes[0].vertices[i2];
+
+        glm::vec3 a = v1.Position - v0.Position;
+        glm::vec3 b = v2.Position - v1.Position;
+        glm::vec3 triangleNormal = glm::normalize(glm::cross(a, b));
+
+        //sort indices
+        if (i0 > i1) {
+            unsigned int temp = i0;
+            i0 = i1;
+            i1 = temp;
+        }
+        if (i0 > i2) {
+            unsigned int temp = i0;
+            i0 = i2;
+            i2 = temp;
+        }
+        if (i1 > i2) {
+            unsigned int temp = i1;
+            i1 = i2;
+            i2 = temp;
+        }
+        //cout << i0 << " " << i1 << " " << i2 << endl;
+
+
+        v0 = ourModel.meshes[0].vertices[i0];
+        v1 = ourModel.meshes[0].vertices[i1];
+        v2 = ourModel.meshes[0].vertices[i2];
+
+        //normals for calculating creases
+        for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+            if ((*it).v == i1) {
+                it->norms.push_back(triangleNormal);
+                break;
+            }
+        }
+
+        for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
+            if ((*it).v == i2) {
+                it->norms.push_back(triangleNormal);
+                break;
+            }
+        }
+
+        for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
+            if ((*it).v == i2) {
+                it->norms.push_back(triangleNormal);
+                break;
+            }
+        }
     }
 
 
@@ -343,7 +403,6 @@ int main()
                 for (auto it = edgeBuffer[j].begin(); it != edgeBuffer[j].end(); ++it) {
                     (*it).b = 0;
                     (*it).f = 0;
-                    it->norms.clear();
                 }
             }
 
@@ -404,30 +463,6 @@ int main()
                 //std::cout << i0 << " " << i1 << " " << i2 << " ";
                 //std::cout << "(" << triangleNormal.x << ", " << triangleNormal.y << ", " << triangleNormal.z << ") " << std::endl;
 
-
-                //normals for calculating creases
-                for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
-                    if ((*it).v == i1) {
-                        it->norms.push_back(triangleNormal);
-                        break;
-                    }
-                }
-                
-
-              
-                for (auto it = edgeBuffer[i0].begin(); it != edgeBuffer[i0].end(); ++it) {
-                    if ((*it).v == i2) {
-                        it->norms.push_back(triangleNormal);
-                        break;
-                    }
-                }
-
-                for (auto it = edgeBuffer[i1].begin(); it != edgeBuffer[i1].end(); ++it) {
-                    if ((*it).v == i2) {
-                        it->norms.push_back(triangleNormal);
-                        break;
-                    }
-                }
 
                 //using algorithm from lec
                 //If the dotproduct between the centroid and the viewDirection is , this triangle is front facing
@@ -535,10 +570,8 @@ int main()
                             v0 = ourModel.meshes[0].vertices[j];
                             v1 = ourModel.meshes[0].vertices[(*it).v];
                             if (it->norms.size() >= 2) {
-                                glm::vec3 norm1 = it->norms.back();
-                                it->norms.pop_back();
-                                glm::vec3 norm2 = it->norms.back();
-                                it->norms.pop_back();
+                                glm::vec3 norm1 = it->norms[0];
+                                glm::vec3 norm2 = it->norms[1];
                                 if (glm::dot(norm1, norm2) <= glm::cos(glm::radians(180.f - creaseAngle))) {
                                     vertices.push_back(v0.Position);
                                     vertices.push_back(v1.Position);
@@ -552,7 +585,6 @@ int main()
             }
            
 
-            //std::cout << creaseVertices.size() << std::endl;
             //std::cout << vertices.size() << std::endl;
             //std::cout << edgeBuffer.size() << std::endl;
 
