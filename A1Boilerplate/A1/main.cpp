@@ -47,11 +47,22 @@ float lastFrame = 0.0f;
 // Object rotation settings
 glm::mat4 rotation;
 float rotSpeed = 2.5f;
-bool outlineFlag = true;
+
+//outline stuff
+bool outlineFlag = false;
 float creaseAngle = 90.f;
 bool creaseFlag = true;
 bool silhouetteFlag = true;
 bool resetFlag = false;
+
+//texture stuff
+float rVal = 1.f;
+glm::vec3 objColor;
+ImVec4 imgui_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+float opacity = 0.75f;
+
+//light stuff
+glm::vec3 lightPositions = glm::vec3(0.f, 0.f, 10.f);
 
 //adjacent list
 struct Node {
@@ -111,7 +122,7 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader ourShader("../shaders/CookTorrance.vs.glsl", "../shaders/CookTorrance.fs.glsl");
+    Shader ourShader("../shaders/texture.vs.glsl", "../shaders/texture.fs.glsl");
     Shader ourShader2("../shaders/outline.vs.glsl", "../shaders/outline.fs.glsl");
 
 
@@ -120,7 +131,8 @@ int main()
     //Model ourModel("../models/teapot.obj");
     //Model ourModel("../models/pyramid.obj");
     //Model ourModel("../models/bunny.obj");
-    Model ourModel("../models/engine.obj");
+    Model ourModel("../models/head.obj");
+    //Model ourModel("../models/engine.obj");
     //Model ourModel("../models/terrain.obj");
 
     //edge buffer stuff
@@ -280,8 +292,53 @@ int main()
 
 
   
-    //edge buffer stuff ends here
     //-------------------------------------------------------------------------------
+    //edge buffer stuff ends here
+
+
+    //texture stuff
+    std::string texPaths[] = { "../textures/material1.png" };
+    unsigned int textures[4];
+
+    //The following block-of-code was adapted from code
+    //I found at the following URL:
+    //https://learnopengl.com/Getting-started/Textures
+    //load and create texture
+    //-------------------------------------------------------------------------------
+    // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
+
+    for (int i = 0; i < 1; ++i) {
+        // ---------
+        glGenTextures(1, &textures[i]);
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+        // set the texture wrapping parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);	// set texture wrapping to GL_REPEAT (default wrapping method)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+        // set texture filtering parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // load image, create texture and generate mipmaps
+        int width, height, nrChannels;
+        stbi_set_flip_vertically_on_load(true); // tell stb_image.h to flip loaded texture's on the y-axis.
+        unsigned char* data = stbi_load(texPaths[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+        }
+        else
+        {
+            std::cout << "Failed to load texture " << i << std::endl;
+        }
+        stbi_image_free(data);
+
+    }
+
+
+    //-------------------------------------------------------------------------------------
+    //end of texture stuff
+
+
 
     //enable this to draw in wireframe
     // -----------
@@ -350,11 +407,13 @@ int main()
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         //LIGHTS
-        glm::vec3 lightPositions[2] = { glm::vec3(0.f, 0.f, 2.f), glm::vec3(-2.f, -1.f, 2.f) };
-        glm::vec3 lightIntensities[2] = { glm::vec3(1.f, 1.f, 1.f), glm::vec3(1.f, 1.f, 1.f) };
-        glUniform3fv(glGetUniformLocation(ourShader.ID, "lightPositions"), 2, glm::value_ptr(lightPositions[0]));
-        glUniform3fv(glGetUniformLocation(ourShader.ID, "lightIntensities"), 2, glm::value_ptr(lightIntensities[0]));
+        glm::vec3 lightIntensities = glm::vec3(1.f, 1.f, 1.f);
+        ourShader.setVec3("lightPositions", lightPositions);
+        ourShader.setVec3("lightIntensities", lightIntensities);
 
+
+        //color
+        objColor = glm::vec3(imgui_color.x, imgui_color.y, imgui_color.z);
 
         if (resetFlag) {
             camera = Camera(glm::vec3(0.0f, 2.0f, 3.0f));
@@ -369,17 +428,16 @@ int main()
         ourShader.setMat4("projection", projection);
         ourShader.setMat4("view", view);
         ourShader.setVec3("viewPos", viewPos);
-
+        ourShader.setFloat("rVal", rVal);
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        //model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
         //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default terrian is a bit too big for our scene, so scale it down
-        float roughness = 0.3; // The roughness of the mesh [0,1]
-        glm::vec3 objectColour = glm::vec3(0.722, 0.45, 0.2);
 
         ourShader.setMat4("model", model);
-        ourShader.setVec3("objectColour", objectColour);
+        ourShader.setVec3("objectColor", objColor);
+        ourShader.setFloat("opacity", opacity);
 
         ourModel.Draw(ourShader);
 
@@ -629,7 +687,11 @@ int main()
             ImGui::Checkbox("Silhouette", &silhouetteFlag);
             ImGui::Checkbox("Crease", &creaseFlag);
 
-            ImGui::SliderFloat("float", &creaseAngle, 0.0f, 150.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+            ImGui::SliderFloat("Dihedral Angle", &creaseAngle, 0.0f, 150.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+
+            //texture stuff
+            ImGui::ColorEdit3("object color", (float*)&imgui_color); // Edit 3 floats representing a color
+            ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
 
             ImGui::End();
 
@@ -652,6 +714,7 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
