@@ -36,16 +36,16 @@ void main()
     float s =  max(dot(norm, lightDir), 0.00);
     float t;
 
-    t = max(dot(reflectDir, viewDir), 0.0);
+    t = abs(dot(norm, -viewDir));
     t = pow(t, rVal);
 
     //using hsv color for adjustment
 
     //convert rgb color to hsv color
     vec3 hsvColor = rgbTohsv(objectColor);
-    
-    //if it's blue 
-    if(hsvColor.x > 0.5 && hsvColor.x <= 0.75){
+
+    //if it's from green to blue
+    if(hsvColor.x > 0.2 && hsvColor.x <= 0.75){
          if(s >= 0.5){
             float val = s - 0.5;
             hsvColor.x = hsvColor.x  - val * hVal;
@@ -67,12 +67,8 @@ void main()
             hsvColor.x = hsvColor.x  - val * hVal;
         }
     }
-        
-    //if it's in the highlight zone
-    if(t >= 0.79 && s >= 0.64){
-        hsvColor.y = sVal * (1 - t) * hsvColor.y;
-        hsvColor.z = (1 - (1 - s) * vVal) * hsvColor.z;
-    }
+ 
+
 
     //convert hsv color to rgb color
     vec3 objColor = hsvTorgb(hsvColor);

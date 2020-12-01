@@ -93,7 +93,7 @@ int main()
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "CPSC 591/691 A1", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "CPSC 591 Project", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -134,7 +134,8 @@ int main()
     //Model ourModel("../models/teapot.obj");
     //Model ourModel("../models/pyramid.obj");
     //Model ourModel("../models/bunny.obj");
-    Model ourModel("../models/head.obj");
+    //Model ourModel("../models/head.obj");
+    Model ourModel("../models/boss.obj");
     //Model ourModel("../models/engine.obj");
     //Model ourModel("../models/terrain.obj");
 
@@ -300,7 +301,7 @@ int main()
 
 
     //texture stuff
-    std::string texPaths[] = { "../textures/material1.png" };
+    std::string texPaths[] = { "../textures/material2.png" };
     unsigned int textures[4];
 
     //The following block-of-code was adapted from code
@@ -435,7 +436,7 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        //model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
         //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default terrian is a bit too big for our scene, so scale it down
 
         ourShader.setMat4("model", model);
@@ -700,6 +701,8 @@ int main()
             ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
             ImGui::SliderFloat("r", &rVal, 0.0f, 10.0f);
             ImGui::SliderFloat("h", &hVal, 0.0f, 0.1f);
+            ImGui::SliderFloat("s", &sVal, 0.0f, 1.f);
+            ImGui::SliderFloat("v", &vVal, 0.0f, 1.f);
 
             ImGui::End();
 
