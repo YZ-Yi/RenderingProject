@@ -60,6 +60,9 @@ float rVal = 1.f;
 glm::vec3 objColor;
 ImVec4 imgui_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 float opacity = 0.75f;
+float hVal = 0.01f;
+float sVal = 0.01f;
+float vVal = 0.01f;
 
 //light stuff
 glm::vec3 lightPositions = glm::vec3(0.f, 0.f, 10.f);
@@ -438,6 +441,9 @@ int main()
         ourShader.setMat4("model", model);
         ourShader.setVec3("objectColor", objColor);
         ourShader.setFloat("opacity", opacity);
+        ourShader.setFloat("hVal", hVal);
+        ourShader.setFloat("sVal", sVal);
+        ourShader.setFloat("vVal", vVal);
 
         ourModel.Draw(ourShader);
 
@@ -680,7 +686,7 @@ int main()
 
             ImGui::Begin("Interface");                          // Create a window called "Hello, world!" and append into it.
 
-            if (ImGui::Button("Reset"))
+            if (ImGui::Button("Reset Camera And Model"))
                 resetFlag = true;
 
             ImGui::Checkbox("Outline", &outlineFlag);
@@ -692,6 +698,8 @@ int main()
             //texture stuff
             ImGui::ColorEdit3("object color", (float*)&imgui_color); // Edit 3 floats representing a color
             ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
+            ImGui::SliderFloat("r", &rVal, 0.0f, 10.0f);
+            ImGui::SliderFloat("h", &hVal, 0.0f, 0.1f);
 
             ImGui::End();
 
@@ -778,6 +786,20 @@ void processInput(GLFWwindow* window)
         ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         ProcessKeyboard(RIGHT, deltaTime);
+
+    //Light position controls
+    if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS)
+        lightPositions += glm::vec3(0.f, 0.1f, 0.f);
+    if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS)
+        lightPositions += glm::vec3(0.f, -0.1f, 0.f);
+    if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS)
+        lightPositions += glm::vec3(-0.1f, 0.f, 0.f);
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+        lightPositions += glm::vec3(0.1f, 0.f, 0.f);
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
+        lightPositions += glm::vec3(0.f, 0.f, 0.1f);
+    if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS)
+        lightPositions += glm::vec3(0.f, 0.f, -0.1f);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes

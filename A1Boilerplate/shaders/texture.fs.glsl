@@ -14,7 +14,9 @@ uniform float rVal;
 uniform int shaderNum;
 uniform	float z_min;
 uniform float opacity;
-
+uniform float hVal;
+uniform float sVal;
+uniform float vVal;
 
 // texture samplers
 uniform sampler2D texture1;
@@ -41,14 +43,33 @@ void main()
 
     //convert rgb color to hsv color
     vec3 hsvColor = rgbTohsv(objectColor);
-    if(s >= 0.5){
-        float val = (s - 0.5) / 2.0;
-        hsvColor.x = (1 + val) * hsvColor.x;
+
+    //if it's blue 
+    if(hsvColor.x > 0.5 && hsvColor.x <= 0.75){
+         if(s >= 0.5){
+            float val = s - 0.5;
+            hsvColor.x = hsvColor.x  - val * hVal;
+        }
+        else{
+            float val = 0.5 - s;
+            hsvColor.x = val * hVal + hsvColor.x;
+
+        }
     }
     else{
-        float val = (0.5 - s) / 2.0;
-        hsvColor.x = (1 - val) * hsvColor.x;
+         if(s >= 0.5){
+            float val = s - 0.5;
+            hsvColor.x = val * hVal + hsvColor.x;
+           
+        }
+        else{
+            float val = 0.5 - s;
+            hsvColor.x = hsvColor.x  - val * hVal;
+        }
     }
+ 
+
+
     //convert hsv color to rgb color
     vec3 objColor = hsvTorgb(hsvColor);
 
@@ -58,6 +79,7 @@ void main()
     
 
     FragColour = vec4(texColour.xyz * objColor * opacity + objColor * (1 - opacity), 1.0);
+    //FragColour = vec4(texColour.xyz * objColor * opacity + texColour.xyz * (1 - opacity), 1.0);
     //FragColour = texColour;
     //FragColour = vec4(objColor, 1.0);
     //FragColour = vec4(objectColor, 1.0);
