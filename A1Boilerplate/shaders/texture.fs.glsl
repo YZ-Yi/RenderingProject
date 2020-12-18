@@ -45,7 +45,7 @@ void main()
     vec3 hsvColor = rgbTohsv(objectColor);
     
     //if it's blue 
-    if(hsvColor.x > 0.5 && hsvColor.x <= 0.75){
+    if(hsvColor.x > 0.2 && hsvColor.x <= 0.75){
          if(s >= 0.5){
             float val = s - 0.5;
             hsvColor.x = hsvColor.x  - val * hVal;
@@ -71,9 +71,9 @@ void main()
     //if it's in the highlight zone
     if(t >= 0.79 && s >= 0.64){
         hsvColor.y = sVal * (1 - t) * hsvColor.y;
-        hsvColor.z = (1 - (1 - s) * vVal) * hsvColor.z;
+        hsvColor.z = (1 + (1 - s) * vVal) * hsvColor.z;
     }
-
+    
     //convert hsv color to rgb color
     vec3 objColor = hsvTorgb(hsvColor);
 
@@ -93,7 +93,7 @@ void main()
 
 //The following block-of-code was adapted from code
 //I found at the following URL:
-//https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+//http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 //convert rgb color to hsv color and convert hsv color to rgb color
 
 vec3 rgbTohsv(vec3 c)

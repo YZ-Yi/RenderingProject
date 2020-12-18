@@ -125,7 +125,7 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader ourShader("../shaders/texture.vs.glsl", "../shaders/texture.fs.glsl");
+    Shader ourShader("../shaders/texture.vs.glsl", "../shaders/texture.fs1.glsl");
     Shader ourShader2("../shaders/outline.vs.glsl", "../shaders/outline.fs.glsl");
 
 
@@ -134,8 +134,8 @@ int main()
     //Model ourModel("../models/teapot.obj");
     //Model ourModel("../models/pyramid.obj");
     //Model ourModel("../models/bunny.obj");
-    //Model ourModel("../models/head.obj");
-    Model ourModel("../models/boss.obj");
+    Model ourModel("../models/head.obj");
+    //Model ourModel("../models/boss.obj");
     //Model ourModel("../models/engine.obj");
     //Model ourModel("../models/terrain.obj");
 
@@ -436,7 +436,7 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        //model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// The default vase is a bit too big for our scene, so scale it down
+        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// Head
         //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default terrian is a bit too big for our scene, so scale it down
 
         ourShader.setMat4("model", model);

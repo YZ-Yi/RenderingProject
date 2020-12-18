@@ -67,8 +67,6 @@ void main()
             hsvColor.x = hsvColor.x  - val * hVal;
         }
     }
- 
-
 
     //convert hsv color to rgb color
     vec3 objColor = hsvTorgb(hsvColor);
@@ -89,7 +87,7 @@ void main()
 
 //The following block-of-code was adapted from code
 //I found at the following URL:
-//https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+//http://lolengine.net/blog/2013/07/27/rgb-to-hsv-in-glsl
 //convert rgb color to hsv color and convert hsv color to rgb color
 
 vec3 rgbTohsv(vec3 c)
