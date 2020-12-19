@@ -67,6 +67,11 @@ float vVal = 0.01f;
 //light stuff
 glm::vec3 lightPositions = glm::vec3(0.f, 0.f, 10.f);
 
+//rendering stuff
+int shaderNum = 0;
+int materialNum = 0;
+int activeModel = 0;
+
 //adjacent list
 struct Node {
     unsigned int v;                     //vertex id(index)
@@ -125,19 +130,33 @@ int main()
 
     // build and compile shaders
     // -------------------------
-    Shader ourShader("../shaders/texture.vs.glsl", "../shaders/texture.fs1.glsl");
+    Shader ourShader("../shaders/texture.vs.glsl", "../shaders/texture.fs.glsl");
     Shader ourShader2("../shaders/outline.vs.glsl", "../shaders/outline.fs.glsl");
 
 
     // load model(s), default model is vase.obj, can load multiple at a time
     // -----------
-    //Model ourModel("../models/teapot.obj");
-    //Model ourModel("../models/pyramid.obj");
-    //Model ourModel("../models/bunny.obj");
-    Model ourModel("../models/head.obj");
+    Model ourModel("../models/teapot.obj");
+    Model ourModel0("../models/teapot.obj");
+    Model ourModel1("../models/bunny.obj");
+    //Model ourModel("../models/head.obj");
     //Model ourModel("../models/boss.obj");
-    //Model ourModel("../models/engine.obj");
-    //Model ourModel("../models/terrain.obj");
+    Model ourModel2("../models/engine.obj");
+    
+    std::cout << "Select active model:" << std::endl;
+    std::cout << "1.teapot 2.bunny 3.engine" << std::endl;
+    std::cin >> activeModel;
+
+    switch (activeModel) {
+    case 1:
+        ourModel = ourModel0;
+        break;
+    case 2:
+        ourModel = ourModel1;
+        break;
+    case 3:
+        ourModel = ourModel2;
+    }
 
     //edge buffer stuff
     //-------------------------------------------------------------------------------
@@ -301,8 +320,8 @@ int main()
 
 
     //texture stuff
-    std::string texPaths[] = { "../textures/material2.png" };
-    unsigned int textures[4];
+    std::string texPaths[] = { "../textures/material1.png", "../textures/material2.png" };
+    unsigned int textures[2];
 
     //The following block-of-code was adapted from code
     //I found at the following URL:
@@ -311,7 +330,7 @@ int main()
     //-------------------------------------------------------------------------------
     // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
 
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 2; ++i) {
         // ---------
         glGenTextures(1, &textures[i]);
         glBindTexture(GL_TEXTURE_2D, textures[i]);
@@ -403,7 +422,8 @@ int main()
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textures[materialNum]);
 
         // don't forget to enable shader before setting uniforms
         ourShader.use();
@@ -425,6 +445,12 @@ int main()
             resetFlag = false;
         }
 
+        if (shaderNum)
+            materialNum = 1;
+        else
+            materialNum = 0;
+
+
         //CAMERA
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
@@ -436,8 +462,9 @@ int main()
 
         //ACTION
         glm::mat4 model = rotation;// The model transformation of the mesh (controlled through arrows)
-        model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// Head
-        //model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	// The default terrian is a bit too big for our scene, so scale it down
+        //model = glm::scale(model, glm::vec3(0.01f, 0.01f, 0.01f));	// Head
+        //if(activeModel == 2)
+          //  model = glm::scale(model, glm::vec3(0.001f, 0.001f, 0.001f));	
 
         ourShader.setMat4("model", model);
         ourShader.setVec3("objectColor", objColor);
@@ -445,6 +472,7 @@ int main()
         ourShader.setFloat("hVal", hVal);
         ourShader.setFloat("sVal", sVal);
         ourShader.setFloat("vVal", vVal);
+        ourShader.setInt("shaderNum", shaderNum);
 
         ourModel.Draw(ourShader);
 
@@ -696,13 +724,16 @@ int main()
 
             ImGui::SliderFloat("Dihedral Angle", &creaseAngle, 0.0f, 150.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 
+            ImGui::RadioButton("non-metal", &shaderNum, 0); ImGui::SameLine();
+            ImGui::RadioButton("metal", &shaderNum, 1);
+
             //texture stuff
             ImGui::ColorEdit3("object color", (float*)&imgui_color); // Edit 3 floats representing a color
             ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
             ImGui::SliderFloat("r", &rVal, 0.0f, 10.0f);
             ImGui::SliderFloat("h", &hVal, 0.0f, 0.1f);
-            ImGui::SliderFloat("s", &sVal, 0.0f, 1.f);
-            ImGui::SliderFloat("v", &vVal, 0.0f, 1.f);
+            ImGui::SliderFloat("s", &sVal, 0.0f, 0.99f);
+            ImGui::SliderFloat("v", &vVal, 0.0f, 0.99f);
 
             ImGui::End();
 
