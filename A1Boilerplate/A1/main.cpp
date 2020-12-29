@@ -724,7 +724,7 @@ int main()
 
             ImGui::SliderFloat("Dihedral Angle", &creaseAngle, 0.0f, 150.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 
-            ImGui::RadioButton("non-metal", &shaderNum, 0); ImGui::SameLine();
+            ImGui::RadioButton("near-silhouette", &shaderNum, 0); ImGui::SameLine();
             ImGui::RadioButton("metal", &shaderNum, 1);
 
             //texture stuff
@@ -732,8 +732,6 @@ int main()
             ImGui::SliderFloat("Opacity", &opacity, 0.0f, 1.0f);
             ImGui::SliderFloat("r", &rVal, 0.0f, 10.0f);
             ImGui::SliderFloat("h", &hVal, 0.0f, 0.1f);
-            ImGui::SliderFloat("s", &sVal, 0.0f, 0.99f);
-            ImGui::SliderFloat("v", &vVal, 0.0f, 0.99f);
 
             ImGui::End();
 

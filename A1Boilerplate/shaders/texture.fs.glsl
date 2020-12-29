@@ -44,28 +44,33 @@ void main()
         t = pow(t, rVal);
 
         //using hsv color for adjustment
-        //if it's from green to blue
-        if(hsvColor.x > 0.2 && hsvColor.x <= 0.75){
-             if(s >= 0.5){
-                float val = s - 0.5;
+        if(hsvColor.x > 0.25 && hsvColor.x <= 0.75){
+             if(t >= 0.5){
+                float val = t - 0.5;
                 hsvColor.x = hsvColor.x  - val * hVal;
             }
             else{
-                float val = 0.5 - s;
+                float val = 0.5 - t;
                 hsvColor.x = val * hVal + hsvColor.x;
 
             }
         }
         else{
-             if(s >= 0.5){
-                float val = s - 0.5;
+             if(t >= 0.5){
+                float val = t - 0.5;
                 hsvColor.x = val * hVal + hsvColor.x;
            
             }
             else{
-                float val = 0.5 - s;
+                float val = 0.5 - t;
                 hsvColor.x = hsvColor.x  - val * hVal;
             }
+        }
+
+        //if it's highlight
+        if(s > 0.92) {
+            hsvColor.y = log(1 + t) * hsvColor.y;
+            hsvColor.z = min(log(1 + s) + s, 1) * hsvColor.z;
         }
     }
     else{
@@ -73,8 +78,7 @@ void main()
         t = pow(t, rVal);
 
         //using hsv color for adjustment
-        //if it's blue 
-        if(hsvColor.x > 0.2 && hsvColor.x <= 0.75){
+        if(hsvColor.x > 0.25 && hsvColor.x <= 0.75){
              if(s >= 0.5){
                 float val = s - 0.5;
                 hsvColor.x = hsvColor.x  - val * hVal;
@@ -97,10 +101,10 @@ void main()
             }
         }
         
-        //if it's in the highlight zone
+        //if it's the highlight 
         if(t >= 0.79 && s >= 0.64){
-            hsvColor.y = sVal * (1 - t) * hsvColor.y;
-            hsvColor.z = (1 + (1 - s) * vVal) * hsvColor.z;
+            hsvColor.y = (1 - t) * hsvColor.y;
+            hsvColor.z = (1 + s) /2 * hsvColor.z;
         }
     }
     
@@ -113,8 +117,8 @@ void main()
     vec4 texColour = texture(texture1, TexCoords);
     
 
-    FragColour = vec4(texColour.xyz * objColor * opacity + objColor * (1 - opacity), 1.0);
-    //FragColour = vec4(texColour.xyz * objColor * opacity + texColour.xyz * (1 - opacity), 1.0);
+    //FragColour = vec4(texColour.xyz * objColor * opacity + objColor * (1 - opacity), 1.0);
+    FragColour = vec4(texColour.xyz * objColor * opacity + texColour.xyz * (1 - opacity), 1.0);
     //FragColour = texColour;
     //FragColour = vec4(objColor, 1.0);
     //FragColour = vec4(objectColor, 1.0);
